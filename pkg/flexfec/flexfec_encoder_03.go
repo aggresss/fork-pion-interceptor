@@ -193,20 +193,32 @@ func (flex *FlexEncoder03) encodeFlexFecHeader(mediaPackets *util.MediaPacketIte
 }
 
 func (flex *FlexEncoder03) encodeFlexFecRepairPayload(mediaPackets *util.MediaPacketIterator) []byte {
-	flexFecPayload := make([]byte, len(mediaPackets.First().Payload))
+	flexFecPayload := make([]byte, mediaPackets.First().MarshalSize()-BaseRTPHeaderSize)
+	tmpMediaPacketBuf := make([]byte, 0)
 
 	for mediaPackets.HasNext() {
-		mediaPacketPayload := mediaPackets.Next().Payload
+		mediaPacket := mediaPackets.Next()
 
-		if len(flexFecPayload) < len(mediaPacketPayload) {
+		if mediaPacket.MarshalSize() > len(tmpMediaPacketBuf) {
+			tmpMediaPacketBuf = make([]byte, mediaPacket.MarshalSize())
+		}
+
+		n, err := mediaPacket.MarshalTo(tmpMediaPacketBuf)
+
+		if n == 0 || err != nil {
+			return nil
+		}
+
+		if len(flexFecPayload) < mediaPacket.MarshalSize()-BaseRTPHeaderSize {
 			// Expected FEC packet payload is bigger that what we can currently store,
 			// we need to resize.
-			flexFecPayloadTmp := make([]byte, len(mediaPacketPayload))
+			flexFecPayloadTmp := make([]byte, mediaPacket.MarshalSize()-BaseRTPHeaderSize)
 			copy(flexFecPayloadTmp, flexFecPayload)
 			flexFecPayload = flexFecPayloadTmp
 		}
-		for byteIndex := 0; byteIndex < len(mediaPacketPayload); byteIndex++ {
-			flexFecPayload[byteIndex] ^= mediaPacketPayload[byteIndex]
+
+		for byteIndex := 0; byteIndex < mediaPacket.MarshalSize()-BaseRTPHeaderSize; byteIndex++ {
+			flexFecPayload[byteIndex] ^= tmpMediaPacketBuf[byteIndex+BaseRTPHeaderSize]
 		}
 	}
 	return flexFecPayload
