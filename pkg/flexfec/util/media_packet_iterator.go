@@ -39,12 +39,12 @@ func (m *MediaPacketIterator) Next() *rtp.Packet {
 	if m.nextIndex == len(m.coveredIndices) {
 		return nil
 	}
-	packet := m.mediaPackets[m.nextIndex]
+	packet := m.mediaPackets[m.coveredIndices[m.nextIndex]]
 	m.nextIndex++
 	return &packet
 }
 
 // First returns the first media packet to iterate through.
 func (m *MediaPacketIterator) First() *rtp.Packet {
-	return &m.mediaPackets[0]
+	return &m.mediaPackets[m.coveredIndices[0]]
 }
