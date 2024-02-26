@@ -15,6 +15,7 @@ import (
 type FecInterceptor struct {
 	interceptor.NoOp
 	minNumMediaPackets uint32
+	minNumFecPackets   uint32
 
 	streams   map[uint32]*fecStream
 	streamsMu sync.Mutex
@@ -48,7 +49,9 @@ func (r *FecInterceptorFactory) NewInterceptor(_ string) (interceptor.Intercepto
 
 	i := &FecInterceptor{
 		minNumMediaPackets: 5,
-		streams:            map[uint32]*fecStream{},
+		minNumFecPackets:   2,
+
+		streams: map[uint32]*fecStream{},
 	}
 
 	for _, opt := range r.opts {
@@ -87,7 +90,7 @@ func (r *FecInterceptor) BindLocalStream(info *interceptor.StreamInfo, writer in
 			// Send the FEC packets
 			var fecPackets []rtp.Packet
 			if len(f.packetBuffer) == int(r.minNumMediaPackets) && f.fecRtpWriter != nil {
-				fecPackets = f.flexFecEncoder.EncodeFec(f.packetBuffer, 2)
+				fecPackets = f.flexFecEncoder.EncodeFec(f.packetBuffer, r.minNumFecPackets)
 
 				for _, fecPacket := range fecPackets {
 					fecResult, fecErr := f.fecRtpWriter.Write(&fecPacket.Header, fecPacket.Payload, attributes)
