@@ -3,8 +3,12 @@ package pacer
 
 import (
 	"container/list"
+	"encoding/csv"
 	"errors"
 	"io"
+	"log"
+	"os"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -12,6 +16,10 @@ import (
 	"github.com/pion/interceptor"
 	"github.com/pion/logging"
 	"github.com/pion/rtp"
+)
+
+const (
+	RFC3339Milli = "2006-01-02T15:04:05.000Z07:00"
 )
 
 var (
@@ -150,13 +158,39 @@ func (p *Interceptor) Close() error {
 }
 
 func (p *Interceptor) run() {
+	f, err := os.Create(strconv.FormatInt(time.Now().UnixMilli(), 10) + ".csv")
+	if err != nil {
+		log.Fatalln("failed to open file", err)
+	}
+	defer f.Close()
+	w := csv.NewWriter(f)
+	defer w.Flush()
+
 	ticker := time.NewTicker(p.pacingInterval)
 	defer ticker.Stop()
+
+	if err := w.Write([]string{
+		"Timestamp",
+		"SendCount",
+	}); err != nil {
+		log.Fatalln("error writing field record to file", err)
+	}
+
+	writeRecord := func(now time.Time, count int64) {
+		if err := w.Write([]string{
+			now.Format(RFC3339Milli),
+			strconv.FormatInt(count, 10),
+		}); err != nil {
+			log.Fatalln("error writing record to file", now, err)
+		}
+	}
+
 	for {
 		select {
 		case <-p.done:
 			return
 		case now := <-ticker.C:
+			sendCount := int64(0)
 			budget := p.getBudget(now)
 			for budget > 0 {
 				next := p.popItem()
@@ -168,13 +202,15 @@ func (p *Interceptor) run() {
 					p.pool.Put(next.payload)
 					continue
 				}
-				_, err = writer.Write(next.header, (*next.payload)[:next.size], next.attributes)
+				n, err := writer.Write(next.header, (*next.payload)[:next.size], next.attributes)
 				if err != nil && err != io.ErrClosedPipe {
 					p.log.Errorf("failed to write packet: %v", err)
 				}
+				sendCount += int64(n)
 				budget -= next.size + next.header.MarshalSize()
 				p.pool.Put(next.payload)
 			}
+			writeRecord(now, sendCount)
 		}
 	}
 }

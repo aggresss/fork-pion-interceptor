@@ -48,8 +48,8 @@ func (r *FecInterceptorFactory) NewInterceptor(_ string) (interceptor.Intercepto
 	// Min num fec packets -> 1
 
 	i := &FecInterceptor{
-		minNumMediaPackets: 5,
-		minNumFecPackets:   2,
+		minNumMediaPackets: 10,
+		minNumFecPackets:   3,
 
 		streams: map[uint32]*fecStream{},
 	}
