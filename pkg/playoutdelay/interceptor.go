@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	playoutDelayURI = "http://www.webrtc.org/experiments/rtp-hdrext/playout-delay"
+	PlayoutDelayURI = "http://www.webrtc.org/experiments/rtp-hdrext/playout-delay"
 )
 
 const (
@@ -65,7 +65,7 @@ type Interceptor struct {
 func (h *Interceptor) BindLocalStream(info *interceptor.StreamInfo, writer interceptor.RTPWriter) interceptor.RTPWriter {
 	var hdrExtID uint8
 	for _, e := range info.RTPHeaderExtensions {
-		if e.URI == playoutDelayURI {
+		if e.URI == PlayoutDelayURI {
 			hdrExtID = uint8(e.ID)
 			break
 		}
