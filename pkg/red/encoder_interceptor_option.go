@@ -18,7 +18,7 @@ func RedLog(log logging.LeveledLogger) Option {
 func RedMaxRedundantLevel(l int) Option {
 	return func(r *Interceptor) error {
 		if l < redLevelMax {
-			return fmt.Errorf("maxSendDelay should lower than %d", redLevelMax)
+			return fmt.Errorf("redLevelMax should lower than %d", redLevelMax)
 		}
 		r.maxRedundantLevel = l
 		return nil
